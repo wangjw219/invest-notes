@@ -15,6 +15,7 @@
     .badge.done { background: #f1f3f4; color: #5f6368; }
     .meta { color: #80868b; font-size: 12px; }
     .summary { white-space: pre-wrap; background: #f8f9fa; padding: 8px; border-radius: 6px; margin-top: 8px; }
+    .original { display: none; white-space: pre-wrap; background: #fff; border: 1px dashed #dadce0; padding: 8px; border-radius: 6px; margin-top: 8px; font-size: 14px; max-height: 300px; overflow-y: auto; }
     .ext { font-size: 13px; margin: 4px 0 0; }
     .ext .cat { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 8px; background: #fef7e0; color: #b06000; margin-right: 4px; }
     .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
@@ -58,7 +59,7 @@
 
     async function load() {
       const { data, error } = await sb.from("items")
-        .select("id, type, title, url, status, created_at, summaries(summary), extractions(category, rule_text)")
+        .select("id, type, title, url, content, excerpt, status, created_at, summaries(summary), extractions(category, rule_text)")
         .order("created_at", { ascending: false }).limit(100);
       if (error) { alert(error.message); return; }
       $("list").innerHTML = data.length ? "" : '<p class="meta">还没有收藏，去保存第一条吧。</p>';
@@ -78,12 +79,22 @@
         ${it.status === "summarized" ? '<span class="badge done">已总结</span>' : ""}
         <span class="meta">${date}</span>
         <div>${it.url ? `<a href="${it.url}" target="_blank" rel="noopener">${escapeHtml(it.title || it.url)}</a>` : escapeHtml(it.title)}</div>
+        <div class="actions" style="margin-top:4px">
+          <button data-act="orig">原文 (${(it.content ?? "").length} 字)</button>
+        </div>
+        <div class="original" data-box="orig">${escapeHtml(it.content || "（无内容）")}</div>
         ${sums}
         <ul style="margin:0;padding:0;list-style:none">${exts}</ul>
         <div class="actions">
           ${it.status !== "summarized" ? '<button data-act="sum">AI 总结</button>' : ""}
           <button data-act="del" class="danger">删除</button>
         </div>`;
+      el.querySelector('[data-act="orig"]').addEventListener("click", (e) => {
+        const box = el.querySelector('[data-box="orig"]');
+        const show = box.style.display !== "block";
+        box.style.display = show ? "block" : "none";
+        e.target.textContent = e.target.textContent.replace(show ? "原文" : "收起", show ? "收起" : "原文");
+      });
       el.querySelector('[data-act="del"]').addEventListener("click", async () => {
         if (!confirm("确定删除这条收藏？（连带总结和规则一起删除）")) return;
         const { error } = await sb.from("items").delete().eq("id", it.id);

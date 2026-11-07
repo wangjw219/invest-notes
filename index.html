@@ -45,6 +45,8 @@
   </section>
 
   <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
     // 本地配置（Supabase URL / anon key）存 localStorage，避免每次输入
     const $ = (id) => document.getElementById(id);
     const cfg = {
@@ -64,15 +66,24 @@
     }
 
     $("loginBtn").addEventListener("click", async () => {
-      localStorage.setItem("sb_url", $("sbUrl").value.trim());
-      localStorage.setItem("sb_anon", $("sbAnon").value.trim());
-      sb = createClient($("sbUrl").value.trim(), $("sbAnon").value.trim());
-      const email = $("email").value.trim(), password = $("password").value;
-      // 注册过一次后就会失败，忽略冲突直接登录
-      await sb.auth.signUp({ email, password }).catch(() => {});
-      const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) alert(error.message); else showMain();
+      const btn = $("loginBtn");
+      btn.disabled = true; btn.textContent = "登录中…";
+      try {
+        localStorage.setItem("sb_url", $("sbUrl").value.trim());
+        localStorage.setItem("sb_anon", $("sbAnon").value.trim());
+        sb = createClient($("sbUrl").value.trim(), $("sbAnon").value.trim());
+        const email = $("email").value.trim(), password = $("password").value;
+        // 注册过一次后就会失败，忽略冲突直接登录
+        await sb.auth.signUp({ email, password }).catch(() => {});
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) { alert(`登录失败：${error.message}`); }
+        else { btn.textContent = "登录成功"; showMain(); return; }
+      } catch (e) {
+        alert(`出错了：${e.message ?? e}`);
+      }
+      btn.disabled = false; btn.textContent = "登录 / 注册";
     });
+    window.addEventListener("unhandledrejection", (e) => alert(`出错了：${e.reason?.message ?? e.reason}`));
 
     $("addIdea").addEventListener("click", async () => {
       const text = $("newIdea").value.trim();

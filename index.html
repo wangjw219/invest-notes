@@ -31,10 +31,7 @@
     <h4>登录</h4>
     <input id="email" type="email" placeholder="邮箱" autocomplete="email" />
     <input id="password" type="password" placeholder="密码" autocomplete="current-password" />
-    <input id="sbUrl" placeholder="Supabase URL（如 https://xxx.supabase.co）" />
-    <input id="sbAnon" placeholder="anon public key" />
     <button id="loginBtn">登录 / 注册</button>
-    <p class="meta">Supabase URL 和 anon key 在 Dashboard → Connect → Framework 里。</p>
   </section>
 
   <!-- 保存：主页 -->
@@ -62,12 +59,13 @@
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
     const $ = (id) => document.getElementById(id);
+    // 公开标识，写死在代码里（数据安全由数据库行级策略保证）
+    const DEFAULT_URL = "https://oraddrhfysrqdflatgzn.supabase.co";
+    const DEFAULT_ANON = "sb_publishable_Buf1sJtQUaTwLwNm-PWyTA_e0xCh21S";
     const cfg = {
-      url: localStorage.getItem("sb_url") ?? "",
-      anon: localStorage.getItem("sb_anon") ?? "",
+      url: localStorage.getItem("sb_url") ?? DEFAULT_URL,
+      anon: localStorage.getItem("sb_anon") ?? DEFAULT_ANON,
     };
-    $("sbUrl").value = cfg.url;
-    $("sbAnon").value = cfg.anon;
 
     let sb = null;
     if (cfg.url && cfg.anon) sb = createClient(cfg.url, cfg.anon);
@@ -89,9 +87,7 @@
       const btn = $("loginBtn");
       btn.disabled = true; btn.textContent = "登录中…";
       try {
-        localStorage.setItem("sb_url", $("sbUrl").value.trim());
-        localStorage.setItem("sb_anon", $("sbAnon").value.trim());
-        sb = createClient($("sbUrl").value.trim(), $("sbAnon").value.trim());
+        sb = createClient(cfg.url, cfg.anon);
         const email = $("email").value.trim(), password = $("password").value;
         await sb.auth.signUp({ email, password }).catch(() => {});
         const { error } = await sb.auth.signInWithPassword({ email, password });

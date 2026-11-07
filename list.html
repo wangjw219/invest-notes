@@ -52,10 +52,9 @@
 
     const $ = (id) => document.getElementById(id);
     const cfg = {
-      url: localStorage.getItem("sb_url") ?? "",
-      anon: localStorage.getItem("sb_anon") ?? "",
+      url: localStorage.getItem("sb_url") ?? "https://oraddrhfysrqdflatgzn.supabase.co",
+      anon: localStorage.getItem("sb_anon") ?? "sb_publishable_Buf1sJtQUaTwLwNm-PWyTA_e0xCh21S",
     };
-    if (!cfg.url || !cfg.anon) { location.href = "./"; }
     const sb = createClient(cfg.url, cfg.anon);
     const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 

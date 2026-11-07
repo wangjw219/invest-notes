@@ -47,7 +47,10 @@
       <input id="vpUrl" placeholder="链接（可选）" />
       <input id="vpAuthor" placeholder="作者 / 来源（可选）" />
       <textarea id="vpContent" rows="5" placeholder="粘贴原文、摘录，或转述你看到的观点…"></textarea>
-      <button id="addVp">保存观点</button>
+      <div style="display:flex;gap:8px">
+        <button id="addVp">保存观点</button>
+        <button id="pasteClip" type="button">从剪贴板读取</button>
+      </div>
     </div>
 
     <p class="meta">电脑网页上还可以用 Chrome 插件一键保存；手机上用系统「分享」直接发到本页。</p>
@@ -117,18 +120,32 @@
 
     $("addVp").addEventListener("click", async () => {
       const content = $("vpContent").value.trim();
-      if (!content) { alert("先填点内容"); return; }
       const url = $("vpUrl").value.trim();
       const author = $("vpAuthor").value.trim();
+      if (!content && !url) { alert("至少填一个链接或一点内容"); return; }
       if (await insert("viewpoint", {
         url: url || null,
-        title: author ? `${author} 的观点` : content.slice(0, 50),
+        title: author ? `${author} 的观点` : (content ? content.slice(0, 50) : url),
         content,
         author,
         source: url ? new URL(url).hostname : "",
       })) {
         $("vpUrl").value = ""; $("vpAuthor").value = ""; $("vpContent").value = "";
         toast("观点已保存 ✓");
+      }
+    });
+
+    // 从剪贴板读取链接/文字，快速预填（需用户点击触发，浏览器才会授权）
+    $("pasteClip").addEventListener("click", async () => {
+      try {
+        const text = (await navigator.clipboard.readText()).trim();
+        if (!text) { toast("剪贴板是空的"); return; }
+        const urlMatch = text.match(/https?:\/\/\S+/);
+        if (urlMatch && !$("vpUrl").value) $("vpUrl").value = urlMatch[0];
+        if (!$("vpContent").value) $("vpContent").value = text.replace(urlMatch?.[0] ?? "", "").trim() || text;
+        toast("已填入剪贴板内容");
+      } catch {
+        toast("读取剪贴板失败，请手动粘贴");
       }
     });
 

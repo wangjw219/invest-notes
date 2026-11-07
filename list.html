@@ -33,6 +33,7 @@
       <a href="#" id="logout" class="hidden"> · 退出</a>
     </div>
   </div>
+  <div id="digest"></div>
   <div id="list"></div>
 
   <script type="module">
@@ -58,6 +59,19 @@
     });
 
     async function load() {
+      // 最新每日思路置顶
+      const { data: digests } = await sb.from("digests")
+        .select("*").order("digest_date", { ascending: false }).limit(1);
+      $("digest").innerHTML = "";
+      if (digests?.[0]) {
+        const d = digests[0];
+        $("digest").innerHTML = `
+          <div class="card" style="border-color:#1a73e8">
+            <span class="badge">📋 每日思路 · ${d.digest_date}</span>
+            <span class="meta">基于今天 ${d.item_count} 条收藏</span>
+            <div class="summary" style="margin-top:8px">${escapeHtml(d.content)}</div>
+          </div>`;
+      }
       const { data, error } = await sb.from("items")
         .select("id, type, title, url, content, excerpt, status, created_at, summaries(summary), extractions(category, rule_text)")
         .order("created_at", { ascending: false }).limit(100);

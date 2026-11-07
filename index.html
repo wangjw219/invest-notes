@@ -3,51 +3,64 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>投资知识库</title>
+  <title>投资知识库 · 保存</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <style>
     body { max-width: 640px; margin: 0 auto; padding: 16px; font: 15px/1.7 system-ui, sans-serif; }
     .hidden { display: none; }
     input, textarea, button, select { font: inherit; box-sizing: border-box; }
-    input, textarea, select { width: 100%; padding: 8px; margin-bottom: 8px; }
+    input, textarea { width: 100%; padding: 8px; margin-bottom: 8px; }
     button { padding: 8px 16px; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: default; }
     .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 12px 0; }
-    .badge { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 10px; background: #e8f0fe; color: #1a73e8; margin-right: 6px; }
-    .badge.idea { background: #e6f4ea; color: #137333; }
-    .badge.done { background: #f1f3f4; color: #5f6368; }
+    .card h4 { margin: 0 0 8px; }
     .meta { color: #80868b; font-size: 12px; }
-    .summary { white-space: pre-wrap; background: #f8f9fa; padding: 8px; border-radius: 6px; margin-top: 8px; }
-    .ext { font-size: 13px; margin: 4px 0 0; padding-left: 14px; }
-    a { color: #1a73e8; word-break: break-all; }
+    .row { display: flex; justify-content: space-between; align-items: center; }
+    a { color: #1a73e8; }
+    #toast { position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%); background: #202124; color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 14px; display: none; }
   </style>
 </head>
 <body>
+  <div class="row">
+    <h3>投资知识库</h3>
+    <a href="list.html" id="toList" class="hidden">收藏列表 →</a>
+  </div>
+
   <!-- 登录 -->
-  <section id="auth">
-    <h3>登录</h3>
+  <section id="auth" class="card">
+    <h4>登录</h4>
     <input id="email" type="email" placeholder="邮箱" autocomplete="email" />
     <input id="password" type="password" placeholder="密码" autocomplete="current-password" />
     <input id="sbUrl" placeholder="Supabase URL（如 https://xxx.supabase.co）" />
     <input id="sbAnon" placeholder="anon public key" />
-    <div class="row"><button id="loginBtn">登录 / 注册</button></div>
-    <p class="meta">Supabase URL 和 anon key 在 Dashboard → Settings → API 里。</p>
+    <button id="loginBtn">登录 / 注册</button>
+    <p class="meta">Supabase URL 和 anon key 在 Dashboard → Connect → Framework 里。</p>
   </section>
 
-  <!-- 主界面 -->
+  <!-- 保存：主页 -->
   <section id="main" class="hidden">
-    <h3>投资知识库</h3>
     <div class="card">
-      <textarea id="newIdea" rows="3" placeholder="此刻的想法…"></textarea>
+      <h4>💭 我的想法</h4>
+      <textarea id="newIdea" rows="4" placeholder="此刻的想法、判断、疑问…"></textarea>
       <button id="addIdea">保存想法</button>
-      <span class="meta">文章/观点用 Chrome 插件或安卓「分享」保存</span>
     </div>
-    <div id="list"></div>
+
+    <div class="card">
+      <h4>📰 其他人的观点</h4>
+      <input id="vpUrl" placeholder="链接（可选）" />
+      <input id="vpAuthor" placeholder="作者 / 来源（可选）" />
+      <textarea id="vpContent" rows="5" placeholder="粘贴原文、摘录，或转述你看到的观点…"></textarea>
+      <button id="addVp">保存观点</button>
+    </div>
+
+    <p class="meta">电脑网页上还可以用 Chrome 插件一键保存；手机上用系统「分享」直接发到本页。</p>
   </section>
+
+  <div id="toast"></div>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-    // 本地配置（Supabase URL / anon key）存 localStorage，避免每次输入
     const $ = (id) => document.getElementById(id);
     const cfg = {
       url: localStorage.getItem("sb_url") ?? "",
@@ -59,10 +72,17 @@
     let sb = null;
     if (cfg.url && cfg.anon) sb = createClient(cfg.url, cfg.anon);
 
+    const toast = (text) => {
+      const el = $("toast");
+      el.textContent = text;
+      el.style.display = "block";
+      setTimeout(() => { el.style.display = "none"; }, 2500);
+    };
+
     function showMain() {
       $("auth").classList.add("hidden");
       $("main").classList.remove("hidden");
-      load();
+      $("toList").classList.remove("hidden");
     }
 
     $("loginBtn").addEventListener("click", async () => {
@@ -73,7 +93,6 @@
         localStorage.setItem("sb_anon", $("sbAnon").value.trim());
         sb = createClient($("sbUrl").value.trim(), $("sbAnon").value.trim());
         const email = $("email").value.trim(), password = $("password").value;
-        // 注册过一次后就会失败，忽略冲突直接登录
         await sb.auth.signUp({ email, password }).catch(() => {});
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) { alert(`登录失败：${error.message}`); }
@@ -85,59 +104,39 @@
     });
     window.addEventListener("unhandledrejection", (e) => alert(`出错了：${e.reason?.message ?? e.reason}`));
 
+    async function insert(type, fields) {
+      const { error } = await sb.from("items").insert({ type, ...fields });
+      if (error) { alert(`保存失败：${error.message}`); return false; }
+      return true;
+    }
+
     $("addIdea").addEventListener("click", async () => {
       const text = $("newIdea").value.trim();
-      if (!text || !sb) return;
-      const { error } = await sb.from("items").insert({ type: "idea", title: text.slice(0, 50), content: text });
-      if (error) alert(error.message);
-      $("newIdea").value = "";
-      load();
+      if (!text) return;
+      if (await insert("idea", { title: text.slice(0, 50), content: text })) {
+        $("newIdea").value = "";
+        toast("想法已保存 ✓");
+      }
     });
 
-    async function load() {
-      const { data, error } = await sb.from("items")
-        .select("id, type, title, url, status, created_at, summaries(summary), extractions(category, rule_text)")
-        .order("created_at", { ascending: false }).limit(50);
-      if (error) { alert(error.message); return; }
-      $("list").innerHTML = "";
-      for (const it of data) renderItem(it);
-    }
+    $("addVp").addEventListener("click", async () => {
+      const content = $("vpContent").value.trim();
+      if (!content) { alert("先填点内容"); return; }
+      const url = $("vpUrl").value.trim();
+      const author = $("vpAuthor").value.trim();
+      if (await insert("viewpoint", {
+        url: url || null,
+        title: author ? `${author} 的观点` : content.slice(0, 50),
+        content,
+        author,
+        source: url ? new URL(url).hostname : "",
+      })) {
+        $("vpUrl").value = ""; $("vpAuthor").value = ""; $("vpContent").value = "";
+        toast("观点已保存 ✓");
+      }
+    });
 
-    function renderItem(it) {
-      const el = document.createElement("div");
-      el.className = "card";
-      const typeLabel = { article: "文章", viewpoint: "观点", idea: "想法" }[it.type];
-      const date = new Date(it.created_at).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
-      const exts = (it.extractions ?? []).map((e) =>
-        `<li class="ext"><span class="badge">${e.category}</span>${escapeHtml(e.rule_text)}</li>`).join("");
-      const sums = (it.summaries ?? []).map((s) => `<div class="summary">${escapeHtml(s.summary)}</div>`).join("");
-      el.innerHTML = `
-        <span class="badge ${it.type === "idea" ? "idea" : ""}">${typeLabel}</span>
-        ${it.status === "summarized" ? '<span class="badge done">已总结</span>' : ""}
-        <span class="meta">${date}</span>
-        <div>${it.url ? `<a href="${it.url}" target="_blank" rel="noopener">${escapeHtml(it.title || it.url)}</a>` : escapeHtml(it.title)}</div>
-        ${sums}
-        <ul style="margin:0;padding:0;list-style:none">${exts}</ul>
-        ${it.status !== "summarized" ? '<button data-act="sum">AI 总结</button>' : ""}`;
-      el.querySelector('[data-act="sum"]')?.addEventListener("click", async (e) => {
-        e.target.disabled = true; e.target.textContent = "总结中…";
-        try {
-          const { data: { session } } = await sb.auth.getSession();
-          const resp = await fetch(`${cfg.url}/functions/v1/summarize`, {
-            method: "POST",
-            headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ itemId: it.id }),
-          });
-          if (!resp.ok) alert((await resp.json()).error ?? "总结失败");
-          load();
-        } catch (err) { alert(String(err)); e.target.disabled = false; e.target.textContent = "AI 总结"; }
-      });
-      $("list").appendChild(el);
-    }
-
-    const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-
-    // 安卓「分享」入口：manifest 注册了 share_target，分享过来的内容在 query string 里
+    // 安卓「分享」入口：分享过来的内容存为「其他人的观点」
     const params = new URLSearchParams(location.search);
     if (params.get("title") || params.get("text") || params.get("url")) {
       history.replaceState(null, "", location.pathname);
@@ -145,7 +144,6 @@
       const text = params.get("text") ?? "";
       const title = params.get("title") ?? "";
       (async () => {
-        // 等登录态就绪后自动入库
         const waitSession = async () => {
           for (let i = 0; i < 60; i++) {
             const { data: { session } } = await sb?.auth.getSession() ?? { data: { session: null } };
@@ -154,21 +152,27 @@
           }
           return null;
         };
-        if (!await waitSession()) { alert("请先登录"); return; }
-        await sb.from("items").insert({
-          type: "article",
+        if (!await waitSession()) {
+          // 未登录：内容填进表单，登录后手动保存
+          $("vpUrl").value = url;
+          $("vpContent").value = [title, text].filter(Boolean).join("\n");
+          alert("已接收分享内容，请先登录，然后点「保存观点」");
+          return;
+        }
+        const { error } = await sb.from("items").insert({
+          type: "viewpoint",
           url: url || null,
           title: title || text.slice(0, 50) || url || "分享的内容",
           content: text || title,
           source: url ? new URL(url).hostname : "",
         });
-        showMain();
+        if (error) alert(`保存分享内容失败：${error.message}`);
+        else { toast("分享内容已保存 ✓"); }
       })();
     } else if (sb) {
       sb.auth.getSession().then(({ data: { session } }) => { if (session) showMain(); });
     }
 
-    // PWA 安装与离线壳
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
   </script>
 </body>

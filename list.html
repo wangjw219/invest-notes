@@ -23,6 +23,9 @@
     .actions button { font-size: 13px; padding: 4px 10px; }
     .danger { color: #b3261e; border-color: #b3261e; background: #fff; }
     a { color: #1a73e8; word-break: break-all; }
+    #tabs { display: flex; gap: 4px; margin: 12px 0; border-bottom: 1px solid #dadce0; overflow-x: auto; }
+    #tabs button { border: none; background: none; padding: 8px 12px; border-bottom: 2px solid transparent; color: #5f6368; white-space: nowrap; }
+    #tabs button.active { color: #1a73e8; border-bottom-color: #1a73e8; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -33,8 +36,16 @@
       <a href="#" id="logout" class="hidden"> · 退出</a>
     </div>
   </div>
-  <div id="digest"></div>
-  <div id="list"></div>
+
+  <div id="tabs">
+    <button data-tab="all" class="active">全部</button>
+    <button data-tab="idea">我的想法</button>
+    <button data-tab="viewpoint">其他人的观点</button>
+    <button data-tab="daily">每日总结</button>
+    <button data-tab="weekly">每周总结</button>
+  </div>
+
+  <div id="content"></div>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -58,29 +69,47 @@
       location.href = "./";
     });
 
+    let items = [], digests = [], activeTab = "all";
+
     async function load() {
-      // 最新每日思路置顶
-      const { data: digests } = await sb.from("digests")
-        .select("*").order("digest_date", { ascending: false }).limit(1);
-      $("digest").innerHTML = "";
-      if (digests?.[0]) {
-        const d = digests[0];
-        $("digest").innerHTML = `
-          <div class="card" style="border-color:#1a73e8">
-            <span class="badge">📋 每日思路 · ${d.digest_date}</span>
-            <span class="meta">基于今天 ${d.item_count} 条收藏</span>
-            <div class="summary" style="margin-top:8px">${escapeHtml(d.content)}</div>
-          </div>`;
-      }
-      const { data, error } = await sb.from("items")
-        .select("id, type, title, url, content, excerpt, status, created_at, summaries(summary), extractions(category, rule_text)")
-        .order("created_at", { ascending: false }).limit(100);
-      if (error) { alert(error.message); return; }
-      $("list").innerHTML = data.length ? "" : '<p class="meta">还没有收藏，去保存第一条吧。</p>';
-      for (const it of data) renderItem(it);
+      const [r1, r2] = await Promise.all([
+        sb.from("items")
+          .select("id, type, title, url, content, excerpt, status, created_at, summaries(summary), extractions(category, rule_text)")
+          .order("created_at", { ascending: false }).limit(200),
+        sb.from("digests").select("*").order("digest_date", { ascending: false }).limit(60),
+      ]);
+      if (r1.error) { alert(r1.error.message); return; }
+      items = r1.data ?? [];
+      digests = r2.data ?? [];
+      render();
     }
 
-    function renderItem(it) {
+    function render() {
+      const box = $("content");
+      box.innerHTML = "";
+      if (activeTab === "daily" || activeTab === "weekly") {
+        const list = digests.filter((d) => d.kind === activeTab);
+        box.innerHTML = list.length ? "" : `<p class="meta">${activeTab === "daily" ? "每日总结会在每天 23:30 自动生成。" : "每周总结会在每周日 23:35 自动生成。"}</p>`;
+        for (const d of list) renderDigest(box, d);
+        return;
+      }
+      const list = activeTab === "all" ? items : items.filter((i) => i.type === activeTab);
+      box.innerHTML = list.length ? "" : '<p class="meta">这个分类还没有内容。</p>';
+      for (const it of list) renderItem(box, it);
+    }
+
+    function renderDigest(box, d) {
+      const el = document.createElement("div");
+      el.className = "card";
+      el.style.borderColor = d.kind === "weekly" ? "#7c3aed" : "#1a73e8";
+      el.innerHTML = `
+        <span class="badge">${d.kind === "weekly" ? "🗓 每周总结" : "📋 每日思路"} · ${d.digest_date}</span>
+        <span class="meta">基于 ${d.item_count} 条收藏</span>
+        <div class="summary" style="margin-top:8px">${escapeHtml(d.content)}</div>`;
+      box.appendChild(el);
+    }
+
+    function renderItem(box, it) {
       const el = document.createElement("div");
       el.className = "card";
       const typeLabel = { idea: "我的想法", viewpoint: "其他人的观点", article: "文章" }[it.type] ?? it.type;
@@ -104,9 +133,9 @@
           <button data-act="del" class="danger">删除</button>
         </div>`;
       el.querySelector('[data-act="orig"]').addEventListener("click", (e) => {
-        const box = el.querySelector('[data-box="orig"]');
-        const show = box.style.display !== "block";
-        box.style.display = show ? "block" : "none";
+        const obox = el.querySelector('[data-box="orig"]');
+        const show = obox.style.display !== "block";
+        obox.style.display = show ? "block" : "none";
         e.target.textContent = e.target.textContent.replace(show ? "原文" : "收起", show ? "收起" : "原文");
       });
       el.querySelector('[data-act="del"]').addEventListener("click", async () => {
@@ -129,8 +158,17 @@
           load();
         } catch (err) { alert(`出错了：${err.message ?? err}`); e.target.disabled = false; e.target.textContent = "AI 总结"; }
       });
-      $("list").appendChild(el);
+      box.appendChild(el);
     }
+
+    document.querySelectorAll("#tabs button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#tabs button").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        activeTab = btn.dataset.tab;
+        render();
+      });
+    });
 
     load();
   </script>

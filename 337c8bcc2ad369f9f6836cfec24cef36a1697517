@@ -1,0 +1,7 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "bzl_git_version": "0.1.43",
+  "base_commit_sha": "337c8bcc2ad369f9f6836cfec24cef36a1697517",
+  "prompts": {}
+}

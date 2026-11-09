@@ -4,8 +4,8 @@
   "description": "收集投资文章、观点与个人想法，AI 辅助总结",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#1a73e8",
+  "background_color": "#f2f4ef",
+  "theme_color": "#f2f4ef",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }

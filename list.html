@@ -3,51 +3,33 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f2f4ef" />
   <title>投资知识库 · 收藏列表</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <style>
-    body { max-width: 640px; margin: 0 auto; padding: 16px; font: 15px/1.7 system-ui, sans-serif; }
-    .hidden { display: none; }
-    button { font: inherit; padding: 6px 12px; cursor: pointer; }
-    .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 12px 0; }
-    .badge { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 10px; background: #e8f0fe; color: #1a73e8; margin-right: 6px; }
-    .badge.idea { background: #e6f4ea; color: #137333; }
-    .badge.done { background: #f1f3f4; color: #5f6368; }
-    .meta { color: #80868b; font-size: 12px; }
-    .summary { white-space: pre-wrap; background: #f8f9fa; padding: 8px; border-radius: 6px; margin-top: 8px; }
-    .original { display: none; white-space: pre-wrap; background: #fff; border: 1px dashed #dadce0; padding: 8px; border-radius: 6px; margin-top: 8px; font-size: 14px; max-height: 300px; overflow-y: auto; }
-    .ext { font-size: 13px; margin: 4px 0 0; }
-    .ext .cat { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 8px; background: #fef7e0; color: #b06000; margin-right: 4px; }
-    .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-    .actions { margin-top: 8px; display: flex; gap: 8px; }
-    .actions button { font-size: 13px; padding: 4px 10px; }
-    .danger { color: #b3261e; border-color: #b3261e; background: #fff; }
-    a { color: #1a73e8; word-break: break-all; }
-    #tabs { display: flex; gap: 4px; margin: 12px 0; border-bottom: 1px solid #dadce0; overflow-x: auto; }
-    #tabs button { border: none; background: none; padding: 8px 12px; border-bottom: 2px solid transparent; color: #5f6368; white-space: nowrap; }
-    #tabs button.active { color: #1a73e8; border-bottom-color: #1a73e8; font-weight: 600; }
-  </style>
+  <link rel="stylesheet" href="app.css" />
 </head>
 <body>
-  <div class="row">
-    <h3>收藏列表</h3>
-    <div>
-      <a href="./">← 保存</a>
-      <a href="#" id="logout" class="hidden"> · 退出</a>
+  <div class="page">
+    <header class="masthead">
+      <h1 class="wordmark">收藏列表</h1>
+      <nav class="nav">
+        <a href="./" class="nav-link">保存</a>
+        <a href="#" id="logout" class="nav-link hidden">退出</a>
+      </nav>
+    </header>
+
+    <div id="tabs" class="tabs" role="tablist">
+      <button class="tab active" data-kind="all" role="tab" aria-selected="true">全部<span class="count"></span></button>
+      <button class="tab" data-kind="idea" role="tab" aria-selected="false">我的想法<span class="count"></span></button>
+      <button class="tab" data-kind="viewpoint" role="tab" aria-selected="false">其他人的观点<span class="count"></span></button>
+      <button class="tab" data-kind="daily" role="tab" aria-selected="false">每日总结<span class="count"></span></button>
+      <button class="tab" data-kind="weekly" role="tab" aria-selected="false">每周总结<span class="count"></span></button>
+      <button class="tab" data-kind="x-invest" role="tab" aria-selected="false">X 机会<span class="count"></span></button>
+      <button class="tab" data-kind="xueqiu" role="tab" aria-selected="false">雪球日报<span class="count"></span></button>
     </div>
-  </div>
 
-  <div id="tabs">
-    <button data-tab="all" class="active">全部</button>
-    <button data-tab="idea">我的想法</button>
-    <button data-tab="viewpoint">其他人的观点</button>
-    <button data-tab="daily">每日总结</button>
-    <button data-tab="weekly">每周总结</button>
-    <button data-tab="x-invest">X 机会</button>
-    <button data-tab="xueqiu">雪球</button>
+    <div id="content" class="list"></div>
   </div>
-
-  <div id="content"></div>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -61,12 +43,13 @@
     const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
     // digest 各类型的展示元数据；key 与 digests.kind 对应
-    const DIGEST_TABS = {
-      daily: { label: "📋 每日思路", color: "#1a73e8", empty: "每日总结会在每天 23:30 自动生成。" },
-      weekly: { label: "🗓 每周总结", color: "#7c3aed", empty: "每周总结会在每周日 23:35 自动生成。" },
-      "x-invest": { label: "𝕏 投资机会日报", color: "#202124", empty: "X 投资机会日报由本机定时任务生成、Telegram 投递后归档到这里。" },
-      xueqiu: { label: "📈 雪球投资日报", color: "#0b8043", empty: "雪球投资日报由本机定时任务生成、Telegram 投递后归档到这里。" },
+    const DIGESTS = {
+      daily: { label: "每日总结", empty: "每日总结会在每天 23:30 自动生成。" },
+      weekly: { label: "每周总结", empty: "每周总结会在每周日 23:35 自动生成。" },
+      "x-invest": { label: "X 机会", empty: "X 投资机会日报由本机定时任务生成、Telegram 投递后归档到这里。" },
+      xueqiu: { label: "雪球日报", empty: "雪球投资日报由本机定时任务生成、Telegram 投递后归档到这里。" },
     };
+    const TYPE_LABELS = { idea: "我的想法", viewpoint: "其他人的观点", article: "文章" };
 
     const { data: { session } } = await sb.auth.getSession();
     if (!session) { location.href = "./"; }
@@ -90,57 +73,83 @@
       if (r1.error) { alert(r1.error.message); return; }
       items = r1.data ?? [];
       digests = r2.data ?? [];
+      updateCounts();
       render();
+    }
+
+    function updateCounts() {
+      const counts = { all: items.length };
+      for (const kind of Object.keys(DIGESTS)) {
+        counts[kind] = digests.filter((d) => d.kind === kind).length;
+      }
+      for (const it of items) counts[it.type] = (counts[it.type] ?? 0) + 1;
+      document.querySelectorAll("#tabs button").forEach((btn) => {
+        const n = counts[btn.dataset.kind] ?? 0;
+        btn.querySelector(".count").textContent = n ? String(n) : "";
+      });
     }
 
     function render() {
       const box = $("content");
       box.innerHTML = "";
-      if (DIGEST_TABS[activeTab]) {
+      if (DIGESTS[activeTab]) {
         const list = digests.filter((d) => d.kind === activeTab);
-        box.innerHTML = list.length ? "" : `<p class="meta">${DIGEST_TABS[activeTab].empty}</p>`;
+        if (!list.length) { box.innerHTML = `<p class="empty">${DIGESTS[activeTab].empty}</p>`; return; }
         for (const d of list) renderDigest(box, d);
         return;
       }
       const list = activeTab === "all" ? items : items.filter((i) => i.type === activeTab);
-      box.innerHTML = list.length ? "" : '<p class="meta">这个分类还没有内容。</p>';
+      if (!list.length) {
+        box.innerHTML = '<p class="empty">这个分类还没有内容。<a href="./">去保存页记下第一条</a>。</p>';
+        return;
+      }
       for (const it of list) renderItem(box, it);
     }
 
     function renderDigest(box, d) {
-      const meta = DIGEST_TABS[d.kind] ?? { label: d.kind, color: "#1a73e8" };
-      const el = document.createElement("div");
-      el.className = "card";
-      el.style.borderColor = meta.color;
+      const meta = DIGESTS[d.kind] ?? { label: d.kind };
+      const el = document.createElement("article");
+      el.className = "entry";
+      el.dataset.kind = d.kind;
       el.innerHTML = `
-        <span class="badge">${meta.label} · ${d.digest_date}</span>
-        <span class="meta">${d.item_count ? `基于 ${d.item_count} 条收藏` : "外部日报归档"}</span>
-        <div class="summary" style="margin-top:8px">${escapeHtml(d.content)}</div>`;
+        <div class="entry-rail">
+          <span class="entry-kind">${meta.label}</span>
+          <span class="entry-date">${d.digest_date}</span>
+        </div>
+        <div class="entry-body">
+          ${d.item_count ? `<p class="meta">基于 ${d.item_count} 条收藏</p>` : ""}
+          <div class="digest-body">${escapeHtml(d.content)}</div>
+        </div>`;
       box.appendChild(el);
     }
 
     function renderItem(box, it) {
-      const el = document.createElement("div");
-      el.className = "card";
-      const typeLabel = { idea: "我的想法", viewpoint: "其他人的观点", article: "文章" }[it.type] ?? it.type;
+      const el = document.createElement("article");
+      el.className = "entry";
+      el.dataset.kind = it.type;
+      const typeLabel = TYPE_LABELS[it.type] ?? it.type;
       const date = new Date(it.created_at).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
       const exts = (it.extractions ?? []).map((e) =>
-        `<li class="ext"><span class="cat">${e.category}</span>${escapeHtml(e.rule_text)}</li>`).join("");
+        `<li class="rule"><span class="cat">${escapeHtml(e.category ?? "")}</span>${escapeHtml(e.rule_text)}</li>`).join("");
       const sums = (it.summaries ?? []).map((s) => `<div class="summary">${escapeHtml(s.summary)}</div>`).join("");
       el.innerHTML = `
-        <span class="badge ${it.type === "idea" ? "idea" : ""}">${typeLabel}</span>
-        ${it.status === "summarized" ? '<span class="badge done">已总结</span>' : ""}
-        <span class="meta">${date}</span>
-        <div>${it.url ? `<a href="${it.url}" target="_blank" rel="noopener">${escapeHtml(it.title || it.url)}</a>` : escapeHtml(it.title)}</div>
-        <div class="actions" style="margin-top:4px">
-          <button data-act="orig">原文 (${(it.content ?? "").length} 字)</button>
+        <div class="entry-rail">
+          <span class="entry-kind">${typeLabel}</span>
+          <span class="entry-date">${date}</span>
+          ${it.status === "summarized" ? '<span class="entry-status">已总结</span>' : ""}
         </div>
-        <div class="original" data-box="orig">${escapeHtml(it.content || "（无内容）")}</div>
-        ${sums}
-        <ul style="margin:0;padding:0;list-style:none">${exts}</ul>
-        <div class="actions">
-          ${it.status !== "summarized" ? '<button data-act="sum">AI 总结</button>' : ""}
-          <button data-act="del" class="danger">删除</button>
+        <div class="entry-body">
+          <h3 class="entry-title">${it.url
+            ? `<a href="${escapeHtml(it.url)}" target="_blank" rel="noopener">${escapeHtml(it.title || it.url)}</a>`
+            : escapeHtml(it.title ?? "")}</h3>
+          ${sums}
+          ${exts ? `<ul class="rules">${exts}</ul>` : ""}
+          <div class="entry-actions">
+            <button class="text-btn" data-act="orig">原文 (${(it.content ?? "").length} 字)</button>
+            ${it.status !== "summarized" ? '<button class="text-btn" data-act="sum">AI 总结</button>' : ""}
+            <button class="text-btn danger" data-act="del">删除</button>
+          </div>
+          <div class="original" data-box="orig">${escapeHtml(it.content || "（无内容）")}</div>
         </div>`;
       el.querySelector('[data-act="orig"]').addEventListener("click", (e) => {
         const obox = el.querySelector('[data-box="orig"]');
@@ -151,8 +160,10 @@
       el.querySelector('[data-act="del"]').addEventListener("click", async () => {
         if (!confirm("确定删除这条收藏？（连带总结和规则一起删除）")) return;
         const { error } = await sb.from("items").delete().eq("id", it.id);
-        if (error) alert(`删除失败：${error.message}`);
+        if (error) { alert(`删除失败：${error.message}`); return; }
+        items = items.filter((i) => i.id !== it.id);
         el.remove();
+        updateCounts();
       });
       el.querySelector('[data-act="sum"]')?.addEventListener("click", async (e) => {
         e.target.disabled = true; e.target.textContent = "总结中…";
@@ -173,9 +184,13 @@
 
     document.querySelectorAll("#tabs button").forEach((btn) => {
       btn.addEventListener("click", () => {
-        document.querySelectorAll("#tabs button").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll("#tabs button").forEach((b) => {
+          b.classList.remove("active");
+          b.setAttribute("aria-selected", "false");
+        });
         btn.classList.add("active");
-        activeTab = btn.dataset.tab;
+        btn.setAttribute("aria-selected", "true");
+        activeTab = btn.dataset.kind;
         render();
       });
     });

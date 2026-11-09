@@ -3,60 +3,69 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f2f4ef" />
   <title>投资知识库 · 保存</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <style>
-    body { max-width: 640px; margin: 0 auto; padding: 16px; font: 15px/1.7 system-ui, sans-serif; }
-    .hidden { display: none; }
-    input, textarea, button, select { font: inherit; box-sizing: border-box; }
-    input, textarea { width: 100%; padding: 8px; margin-bottom: 8px; }
-    button { padding: 8px 16px; cursor: pointer; }
-    button:disabled { opacity: .5; cursor: default; }
-    .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 12px 0; }
-    .card h4 { margin: 0 0 8px; }
-    .meta { color: #80868b; font-size: 12px; }
-    .row { display: flex; justify-content: space-between; align-items: center; }
-    a { color: #1a73e8; }
-    #toast { position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%); background: #202124; color: #fff; padding: 10px 18px; border-radius: 20px; font-size: 14px; display: none; }
-  </style>
+  <link rel="stylesheet" href="app.css" />
 </head>
 <body>
-  <div class="row">
-    <h3>投资知识库</h3>
-    <a href="list.html" id="toList" class="hidden">收藏列表 →</a>
+  <div class="page">
+    <header class="masthead">
+      <h1 class="wordmark">投资知识库</h1>
+      <nav class="nav">
+        <a href="list.html" id="toList" class="nav-link hidden">收藏列表</a>
+      </nav>
+    </header>
+
+    <!-- 登录 -->
+    <section id="auth" class="sheet auth-sheet">
+      <h2 class="sheet-title">登录</h2>
+      <label class="field">
+        <span>邮箱</span>
+        <input id="email" type="email" placeholder="you@example.com" autocomplete="email" />
+      </label>
+      <label class="field">
+        <span>密码</span>
+        <input id="password" type="password" placeholder="输入密码" autocomplete="current-password" />
+      </label>
+      <button id="loginBtn" class="btn block">登录 / 注册</button>
+    </section>
+
+    <!-- 保存：主页 -->
+    <section id="main" class="hidden">
+      <div class="sheet">
+        <h2 class="sheet-title">我的想法</h2>
+        <textarea id="newIdea" class="prose" rows="4" placeholder="此刻的想法、判断、疑问…"></textarea>
+        <div class="sheet-actions">
+          <button id="addIdea" class="btn">保存想法</button>
+        </div>
+      </div>
+
+      <div class="sheet">
+        <h2 class="sheet-title">其他人的观点 <span class="hint">链接和原文至少填一个</span></h2>
+        <label class="field">
+          <span>作者 / 来源</span>
+          <input id="vpAuthor" placeholder="可直接选择已用过的作者" list="authorList" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>链接</span>
+          <input id="vpUrl" placeholder="https://" />
+        </label>
+        <label class="field">
+          <span>原文 / 摘录</span>
+          <textarea id="vpContent" class="prose" rows="5" placeholder="粘贴原文、摘录，或转述你看到的观点…"></textarea>
+        </label>
+        <div class="sheet-actions">
+          <button id="addVp" class="btn">保存观点</button>
+          <button id="pasteClip" type="button" class="btn ghost">从剪贴板读取</button>
+        </div>
+      </div>
+
+      <p class="footnote">电脑网页上还可以用 Chrome 插件一键保存；手机上用系统「分享」直接发到本页。</p>
+    </section>
   </div>
 
-  <!-- 登录 -->
-  <section id="auth" class="card">
-    <h4>登录</h4>
-    <input id="email" type="email" placeholder="邮箱" autocomplete="email" />
-    <input id="password" type="password" placeholder="密码" autocomplete="current-password" />
-    <button id="loginBtn">登录 / 注册</button>
-  </section>
-
-  <!-- 保存：主页 -->
-  <section id="main" class="hidden">
-    <div class="card">
-      <h4>💭 我的想法</h4>
-      <textarea id="newIdea" rows="4" placeholder="此刻的想法、判断、疑问…"></textarea>
-      <button id="addIdea">保存想法</button>
-    </div>
-
-    <div class="card">
-      <h4>📰 其他人的观点</h4>
-      <input id="vpUrl" placeholder="链接（可选）" />
-      <input id="vpAuthor" placeholder="作者 / 来源（可选，可直接选择已用过的）" list="authorList" autocomplete="off" />
-      <textarea id="vpContent" rows="5" placeholder="粘贴原文、摘录，或转述你看到的观点…"></textarea>
-      <div style="display:flex;gap:8px">
-        <button id="addVp">保存观点</button>
-        <button id="pasteClip" type="button">从剪贴板读取</button>
-      </div>
-    </div>
-
-    <p class="meta">电脑网页上还可以用 Chrome 插件一键保存；手机上用系统「分享」直接发到本页。</p>
-  </section>
-
-  <div id="toast"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
   <datalist id="authorList"></datalist>
 
   <script type="module">
@@ -143,7 +152,7 @@
       const content = $("vpContent").value.trim();
       const url = $("vpUrl").value.trim();
       const author = $("vpAuthor").value.trim();
-      if (!content && !url) { alert("至少填一个链接或一点内容"); return; }
+      if (!content && !url) { alert("链接和原文必须填一个"); return; }
       if (await insert("viewpoint", {
         url: url || null,
         title: author ? `${author} 的观点` : (content ? content.slice(0, 50) : url),

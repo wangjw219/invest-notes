@@ -43,6 +43,8 @@
     <button data-tab="viewpoint">其他人的观点</button>
     <button data-tab="daily">每日总结</button>
     <button data-tab="weekly">每周总结</button>
+    <button data-tab="x-invest">X 机会</button>
+    <button data-tab="xueqiu">雪球</button>
   </div>
 
   <div id="content"></div>
@@ -57,6 +59,14 @@
     };
     const sb = createClient(cfg.url, cfg.anon);
     const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+    // digest 各类型的展示元数据；key 与 digests.kind 对应
+    const DIGEST_TABS = {
+      daily: { label: "📋 每日思路", color: "#1a73e8", empty: "每日总结会在每天 23:30 自动生成。" },
+      weekly: { label: "🗓 每周总结", color: "#7c3aed", empty: "每周总结会在每周日 23:35 自动生成。" },
+      "x-invest": { label: "𝕏 投资机会日报", color: "#202124", empty: "X 投资机会日报由本机定时任务生成、Telegram 投递后归档到这里。" },
+      xueqiu: { label: "📈 雪球投资日报", color: "#0b8043", empty: "雪球投资日报由本机定时任务生成、Telegram 投递后归档到这里。" },
+    };
 
     const { data: { session } } = await sb.auth.getSession();
     if (!session) { location.href = "./"; }
@@ -86,9 +96,9 @@
     function render() {
       const box = $("content");
       box.innerHTML = "";
-      if (activeTab === "daily" || activeTab === "weekly") {
+      if (DIGEST_TABS[activeTab]) {
         const list = digests.filter((d) => d.kind === activeTab);
-        box.innerHTML = list.length ? "" : `<p class="meta">${activeTab === "daily" ? "每日总结会在每天 23:30 自动生成。" : "每周总结会在每周日 23:35 自动生成。"}</p>`;
+        box.innerHTML = list.length ? "" : `<p class="meta">${DIGEST_TABS[activeTab].empty}</p>`;
         for (const d of list) renderDigest(box, d);
         return;
       }
@@ -98,12 +108,13 @@
     }
 
     function renderDigest(box, d) {
+      const meta = DIGEST_TABS[d.kind] ?? { label: d.kind, color: "#1a73e8" };
       const el = document.createElement("div");
       el.className = "card";
-      el.style.borderColor = d.kind === "weekly" ? "#7c3aed" : "#1a73e8";
+      el.style.borderColor = meta.color;
       el.innerHTML = `
-        <span class="badge">${d.kind === "weekly" ? "🗓 每周总结" : "📋 每日思路"} · ${d.digest_date}</span>
-        <span class="meta">基于 ${d.item_count} 条收藏</span>
+        <span class="badge">${meta.label} · ${d.digest_date}</span>
+        <span class="meta">${d.item_count ? `基于 ${d.item_count} 条收藏` : "外部日报归档"}</span>
         <div class="summary" style="margin-top:8px">${escapeHtml(d.content)}</div>`;
       box.appendChild(el);
     }

@@ -45,7 +45,7 @@
     <div class="card">
       <h4>📰 其他人的观点</h4>
       <input id="vpUrl" placeholder="链接（可选）" />
-      <input id="vpAuthor" placeholder="作者 / 来源（可选）" />
+      <input id="vpAuthor" placeholder="作者 / 来源（可选，可直接选择已用过的）" list="authorList" autocomplete="off" />
       <textarea id="vpContent" rows="5" placeholder="粘贴原文、摘录，或转述你看到的观点…"></textarea>
       <div style="display:flex;gap:8px">
         <button id="addVp">保存观点</button>
@@ -57,6 +57,7 @@
   </section>
 
   <div id="toast"></div>
+  <datalist id="authorList"></datalist>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -84,6 +85,26 @@
       $("auth").classList.add("hidden");
       $("main").classList.remove("hidden");
       $("toList").classList.remove("hidden");
+      loadAuthorSuggestions();
+    }
+
+    // 已用过的作者/来源做成下拉建议（datalist），选择已有项或输入新值都可以
+    async function loadAuthorSuggestions() {
+      const { data } = await sb.from("items")
+        .select("author, source")
+        .order("created_at", { ascending: false })
+        .limit(500);
+      const values = [];
+      const seen = new Set();
+      for (const it of data ?? []) {
+        for (const v of [it.author, it.source]) {
+          const s = (v ?? "").trim();
+          if (s && !seen.has(s)) { seen.add(s); values.push(s); }
+        }
+      }
+      $("authorList").innerHTML = values
+        .map((v) => `<option value="${v.replace(/&/g, "&amp;").replace(/"/g, "&quot;")}"></option>`)
+        .join("");
     }
 
     $("loginBtn").addEventListener("click", async () => {
@@ -132,6 +153,7 @@
       })) {
         $("vpUrl").value = ""; $("vpAuthor").value = ""; $("vpContent").value = "";
         toast("观点已保存 ✓");
+        loadAuthorSuggestions();
       }
     });
 

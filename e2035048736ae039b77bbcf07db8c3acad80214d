@@ -1,0 +1,39 @@
+app.css
+  8b06573de2671806 1-458
+manifest.webmanifest
+  8b06573de2671806 7-8
+list.html
+  8b06573de2671806 6,9,12-28,31,46-50,52,76,80-91,95,97,102-105,110-113,115-122,127-130,133,136-139,141-152,163-164,166,187-190,192-193
+index.html
+  8b06573de2671806 6,9,12-42,44-61,64-66,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "bzl_git_version": "0.1.43",
+  "base_commit_sha": "e2035048736ae039b77bbcf07db8c3acad80214d",
+  "prompts": {
+    "8b06573de2671806": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31318b52-a962-4aea-90f3-c617de527154",
+        "model": "DeepSeek/deepseek-v4-flash-vision-exp",
+        "ide": "claude-cli"
+      },
+      "human_author": "wangjinwei01",
+      "transcript_path": "/Users/boss/.claude/projects/-Users-boss-Project-invest-notes-web/31318b52-a962-4aea-90f3-c617de527154.jsonl",
+      "total_additions": 601,
+      "total_deletions": 119,
+      "accepted_lines": 602,
+      "overriden_lines": 0,
+      "usage": {
+        "input_tokens": 261671,
+        "output_tokens": 121837,
+        "cache_read_tokens": 4964736,
+        "cache_write_tokens": 0,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 5348244,
+        "cost_usd": 0.12724699999999997
+      }
+    }
+  }
+}

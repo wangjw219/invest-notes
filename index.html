@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f2f4ef" />
   <title>投资知识库 · 保存</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="app.css?v=2" />
+  <link rel="stylesheet" href="app.css?v=3" />
 </head>
 <body>
   <div class="page">
@@ -160,7 +160,12 @@
       }
     });
     authorInput.addEventListener("input", showMenu);
-    authorInput.addEventListener("blur", () => setTimeout(hideMenu, 150));
+    // 焦点离开输入框时延时收起；落点仍在下拉里（正在滑动或点选）则不收
+    authorInput.addEventListener("blur", () => {
+      setTimeout(() => {
+        if (!authorMenu.contains(document.activeElement)) hideMenu();
+      }, 150);
+    });
     authorInput.addEventListener("keydown", (e) => {
       if (authorMenu.hidden) {
         if (e.key === "ArrowDown") { e.preventDefault(); showMenu(); }
@@ -179,13 +184,27 @@
       }
     });
 
-    // pointerdown 早于 blur，手机上点建议不会丢
+    // 按下不选中：滑动超过阈值视为滚动，抬起且停在原选项上才填入
+    let press = null;
+
     authorMenu.addEventListener("pointerdown", (e) => {
       const item = e.target.closest(".menu-item");
       if (!item) return;
       e.preventDefault();
-      selectAuthor(item.textContent);
+      press = { item, x: e.clientX, y: e.clientY };
     });
+
+    authorMenu.addEventListener("pointermove", (e) => {
+      if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) press = null;
+    });
+
+    authorMenu.addEventListener("pointerup", (e) => {
+      const item = e.target.closest(".menu-item");
+      if (press && item === press.item) selectAuthor(item.textContent);
+      press = null;
+    });
+
+    authorMenu.addEventListener("pointercancel", () => { press = null; });
 
     document.addEventListener("pointerdown", (e) => {
       if (!e.target.closest(".combo")) hideMenu();

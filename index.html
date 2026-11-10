@@ -43,10 +43,12 @@
 
       <div class="sheet">
         <h2 class="sheet-title">其他人的观点 <span class="hint">链接和原文至少填一个</span></h2>
-        <label class="field">
-          <span>作者 / 来源</span>
-          <input id="vpAuthor" placeholder="可直接选择已用过的作者" list="authorList" autocomplete="off" />
-        </label>
+        <div class="field combo">
+          <label for="vpAuthor">作者 / 来源</label>
+          <input id="vpAuthor" placeholder="可直接选择已用过的作者" autocomplete="off"
+                 role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="authorMenu" />
+          <div id="authorMenu" class="menu" role="listbox" hidden></div>
+        </div>
         <label class="field">
           <span>链接</span>
           <input id="vpUrl" placeholder="https://" />
@@ -66,12 +68,12 @@
   </div>
 
   <div id="toast" role="status" aria-live="polite"></div>
-  <datalist id="authorList"></datalist>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
     const $ = (id) => document.getElementById(id);
+    const escapeHtml = (s) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     // 公开标识，写死在代码里（数据安全由数据库行级策略保证）
     const DEFAULT_URL = "https://oraddrhfysrqdflatgzn.supabase.co";
     const DEFAULT_ANON = "sb_publishable_Buf1sJtQUaTwLwNm-PWyTA_e0xCh21S";
@@ -97,7 +99,9 @@
       loadAuthorSuggestions();
     }
 
-    // 已用过的作者/来源做成下拉建议（datalist），选择已有项或输入新值都可以
+    // 已用过的作者/来源，供输入框的下拉建议使用
+    let authorValues = [];
+
     async function loadAuthorSuggestions() {
       const { data } = await sb.from("items")
         .select("author, source")
@@ -111,10 +115,74 @@
           if (s && !seen.has(s)) { seen.add(s); values.push(s); }
         }
       }
-      $("authorList").innerHTML = values
-        .map((v) => `<option value="${v.replace(/&/g, "&amp;").replace(/"/g, "&quot;")}"></option>`)
-        .join("");
+      authorValues = values;
     }
+
+    // 原生 datalist 在安卓 PWA 独立窗口下不弹层，改为自绘建议面板
+    const authorInput = $("vpAuthor");
+    const authorMenu = $("authorMenu");
+    let menuItems = [], activeIdx = -1;
+
+    function hideMenu() {
+      authorMenu.hidden = true;
+      authorMenu.innerHTML = "";
+      authorInput.setAttribute("aria-expanded", "false");
+      menuItems = [];
+      activeIdx = -1;
+    }
+
+    function showMenu() {
+      const q = authorInput.value.trim().toLowerCase();
+      const matches = authorValues
+        .filter((v) => !q || v.toLowerCase().includes(q))
+        .slice(0, 8);
+      if (!matches.length) { hideMenu(); return; }
+      authorMenu.innerHTML = matches
+        .map((v) => `<button type="button" class="menu-item" role="option">${escapeHtml(v)}</button>`)
+        .join("");
+      authorMenu.hidden = false;
+      authorInput.setAttribute("aria-expanded", "true");
+      menuItems = [...authorMenu.querySelectorAll(".menu-item")];
+      activeIdx = -1;
+    }
+
+    function selectAuthor(value) {
+      authorInput.value = value;
+      hideMenu();
+    }
+
+    authorInput.addEventListener("focus", showMenu);
+    authorInput.addEventListener("input", showMenu);
+    authorInput.addEventListener("blur", () => setTimeout(hideMenu, 150));
+    authorInput.addEventListener("keydown", (e) => {
+      if (authorMenu.hidden) {
+        if (e.key === "ArrowDown") { e.preventDefault(); showMenu(); }
+        return;
+      }
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        activeIdx = (activeIdx + (e.key === "ArrowDown" ? 1 : -1) + menuItems.length) % menuItems.length;
+        menuItems.forEach((el, i) => el.classList.toggle("active", i === activeIdx));
+        menuItems[activeIdx].scrollIntoView({ block: "nearest" });
+      } else if (e.key === "Enter" && activeIdx >= 0) {
+        e.preventDefault();
+        selectAuthor(menuItems[activeIdx].textContent);
+      } else if (e.key === "Escape") {
+        hideMenu();
+      }
+    });
+
+    // pointerdown 早于 blur，手机上点建议不会丢
+    authorMenu.addEventListener("pointerdown", (e) => {
+      const item = e.target.closest(".menu-item");
+      if (!item) return;
+      e.preventDefault();
+      selectAuthor(item.textContent);
+    });
+
+    document.addEventListener("pointerdown", (e) => {
+      if (!e.target.closest(".combo")) hideMenu();
+    });
 
     $("loginBtn").addEventListener("click", async () => {
       const btn = $("loginBtn");

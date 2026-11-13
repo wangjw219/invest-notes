@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f2f4ef" />
   <title>投资知识库 · 收藏列表</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="app.css?v=3" />
+  <link rel="stylesheet" href="app.css?v=4" />
 </head>
 <body>
   <div class="page">
@@ -50,6 +50,7 @@
       xueqiu: { label: "雪球日报", empty: "雪球投资日报由本机定时任务生成、Telegram 投递后归档到这里。" },
     };
     const TYPE_LABELS = { idea: "我的想法", viewpoint: "其他人的观点", article: "文章" };
+    const TAG_LABELS = { direction: "方向", principle: "原则" };
 
     const { data: { session } } = await sb.auth.getSession();
     if (!session) { location.href = "./"; }
@@ -66,7 +67,7 @@
     async function load() {
       const [r1, r2] = await Promise.all([
         sb.from("items")
-          .select("id, type, title, url, content, excerpt, status, created_at, summaries(summary), extractions(category, rule_text)")
+          .select("id, type, title, url, content, excerpt, status, tag, created_at, summaries(summary), extractions(category, rule_text)")
           .order("created_at", { ascending: false }).limit(200),
         sb.from("digests").select("*").order("digest_date", { ascending: false }).limit(60),
       ]);
@@ -132,6 +133,7 @@
       const exts = (it.extractions ?? []).map((e) =>
         `<li class="rule"><span class="cat">${escapeHtml(e.category ?? "")}</span>${escapeHtml(e.rule_text)}</li>`).join("");
       const sums = (it.summaries ?? []).map((s) => `<div class="summary">${escapeHtml(s.summary)}</div>`).join("");
+      const tagLabel = TAG_LABELS[it.tag] ?? "";
       el.innerHTML = `
         <div class="entry-rail">
           <span class="entry-kind">${typeLabel}</span>
@@ -139,9 +141,12 @@
           ${it.status === "summarized" ? '<span class="entry-status">已总结</span>' : ""}
         </div>
         <div class="entry-body">
-          <h3 class="entry-title">${it.url
-            ? `<a href="${escapeHtml(it.url)}" target="_blank" rel="noopener">${escapeHtml(it.title || it.url)}</a>`
-            : escapeHtml(it.title ?? "")}</h3>
+          <div class="entry-head">
+            ${tagLabel ? `<span class="tag">${tagLabel}</span>` : ""}
+            <h3 class="entry-title">${it.url
+              ? `<a href="${escapeHtml(it.url)}" target="_blank" rel="noopener">${escapeHtml(it.title || it.url)}</a>`
+              : escapeHtml(it.title ?? "")}</h3>
+          </div>
           ${sums}
           ${exts ? `<ul class="rules">${exts}</ul>` : ""}
           <div class="entry-actions">

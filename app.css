@@ -220,6 +220,58 @@ select:focus-visible {
 
 .btn.block { width: 100%; }
 
+/* 标签 */
+.tag-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.tag-label {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.tag-opt {
+  padding: 7px 14px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  background: transparent;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s, color .15s;
+}
+.tag-opt:hover { border-color: var(--ink-3); color: var(--ink); }
+.tag-opt[aria-pressed="true"] {
+  background: var(--accent-wash);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tag {
+  flex: none;
+  padding: 1px 7px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--ink-2);
+}
+
+.entry-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.entry-head .entry-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 /* 登录 */
 .auth-sheet { max-width: 400px; margin: 8vh auto 0; }
 

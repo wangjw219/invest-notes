@@ -440,7 +440,13 @@ select:focus-visible {
   line-height: 1.7;
   color: var(--ink-2);
 }
-.rule .cat { font-size: 11px; color: var(--ink-3); }
+.rule .cat {
+  padding-right: 8px;
+  border-right: 1px solid var(--rule);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
 
 .original {
   display: none;

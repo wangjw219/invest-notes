@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f2f4ef" />
   <title>投资知识库 · 收藏列表</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="app.css?v=4" />
+  <link rel="stylesheet" href="app.css?v=5" />
 </head>
 <body>
   <div class="page">
@@ -51,6 +51,16 @@
     };
     const TYPE_LABELS = { idea: "我的想法", viewpoint: "其他人的观点", article: "文章" };
     const TAG_LABELS = { direction: "方向", principle: "原则" };
+    // extractions.category 是数据库枚举，展示时映射为中文
+    const CATEGORY_LABELS = {
+      principle: "决策纪律",
+      gate: "买入门槛",
+      preference: "偏好倾向",
+      red_flag: "危险信号",
+      heuristic: "经验估计",
+      example: "参考案例",
+      caution: "风险提示",
+    };
 
     const { data: { session } } = await sb.auth.getSession();
     if (!session) { location.href = "./"; }
@@ -130,8 +140,10 @@
       el.dataset.kind = it.type;
       const typeLabel = TYPE_LABELS[it.type] ?? it.type;
       const date = new Date(it.created_at).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
-      const exts = (it.extractions ?? []).map((e) =>
-        `<li class="rule"><span class="cat">${escapeHtml(e.category ?? "")}</span>${escapeHtml(e.rule_text)}</li>`).join("");
+      const exts = (it.extractions ?? []).map((e) => {
+        const cat = CATEGORY_LABELS[e.category] ?? e.category ?? "";
+        return `<li class="rule"><span class="cat">${escapeHtml(cat)}</span>${escapeHtml(e.rule_text)}</li>`;
+      }).join("");
       const sums = (it.summaries ?? []).map((s) => `<div class="summary">${escapeHtml(s.summary)}</div>`).join("");
       const tagLabel = TAG_LABELS[it.tag] ?? "";
       el.innerHTML = `
